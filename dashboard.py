@@ -10,6 +10,9 @@ import platform
 import matplotlib
 if platform.system() == "Windows":
     import winsound
+# ----- FIX FOR CLOUD ERROR -----
+if "current_page" not in st.session_state:
+    st.session_state.current_page = "dashboard"
 
 # Try to import email_alert module
 try:
@@ -1358,3 +1361,4 @@ def main():
 # Run the app
 if __name__ == "__main__":
     main()
+
