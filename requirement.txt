@@ -2,3 +2,5 @@ streamlit
 plotly
 pandas
 reportlab
+email-validator
+secure-smtplib
