@@ -15,6 +15,9 @@ import socket
 def is_cloud():
     host = socket.gethostname().lower()
     return "streamlit" in host or "heroku" in host or "render" in host
+# ---- SOUND PERMISSION FLAG FOR CLOUD ----
+if "sound_allowed" not in st.session_state:
+    st.session_state.sound_allowed = False
 
 def dashboard_page():
     # ----- LOGIN GUARD -----
@@ -123,6 +126,12 @@ def dashboard_page():
     # ----- TITLE -----
     st.markdown("<div class='hero'>Critical Space Environment Monitoring – Real-Time Dashboard</div>",
                 unsafe_allow_html=True)
+    # ---- ENABLE SOUND IN CLOUD ----
+    if is_cloud() and not st.session_state.sound_allowed:
+        st.warning("🔊 Click once to enable alarm sound")
+        if st.button("Enable Alarm Audio"):
+            st.session_state.sound_allowed = True
+            st.success("✅ Alarm enabled successfully!")
 
     # ----- DATA (demo) -----
     def read():
@@ -299,7 +308,8 @@ def dashboard_page():
                 pass
 
         # ===== CLOUD =====
-        if is_cloud() and beep:
+        # ===== CLOUD (BROWSER AUDIO) =====
+        if is_cloud() and beep and st.session_state.sound_allowed:
             stamp = str(time.time())
             st.markdown(f"""
                 <audio autoplay loop>
