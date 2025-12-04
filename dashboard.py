@@ -10,6 +10,11 @@ if platform.system() == "Windows":
     import winsound
 
 import email_alert
+import socket
+
+def is_cloud():
+    host = socket.gethostname().lower()
+    return "streamlit" in host or "heroku" in host or "render" in host
 
 def dashboard_page():
     # ----- LOGIN GUARD -----
@@ -274,18 +279,37 @@ def dashboard_page():
     # ---------- EVENT BASED BEEP (FINAL) ----------
     # ===== SYSTEM LEVEL BEEP (NO BROWSER ISSUE) =====
 
+    beep = load_beep()
+
     if "alarm" not in st.session_state:
         st.session_state.alarm = False
 
+    # ----------- TRIGGER ----------------
+
     if s["Temperature"] > 34 and not st.session_state.alarm:
 
-        st.warning("🔊 SYSTEM ALARM TRIGGERED")
+        st.warning("🚨 TEMPERATURE ALARM ACTIVE")
 
-        if platform.system() == "Windows":
-            winsound.Beep(2000, 900)
+        # ===== LOCALHOST =====
+        if not is_cloud():
+            try:
+                import winsound
+                winsound.Beep(2500, 1200)
+            except:
+                pass
+
+        # ===== CLOUD =====
+        if is_cloud() and beep:
+            stamp = str(time.time())
+            st.markdown(f"""
+                <audio autoplay loop>
+                    <source src="data:audio/mp3;base64,{beep}#{stamp}" type="audio/mp3">
+                </audio>
+            """, unsafe_allow_html=True)
 
         st.session_state.alarm = True
 
+    # -------- RESET when SAFE ----------
     if s["Temperature"] <= 34:
         st.session_state.alarm = False
 
