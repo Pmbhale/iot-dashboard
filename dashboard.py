@@ -365,7 +365,7 @@ def reports_page():
 
     # Create navigation header for reports page
     now = datetime.now().strftime("%H:%M:%S")
-   
+
 
     # Report Generation Options
     st.markdown("<div class='card'><div class='hdr'>📄 Report Generator</div>", unsafe_allow_html=True)
