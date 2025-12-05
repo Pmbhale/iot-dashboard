@@ -396,19 +396,20 @@ def login_page():
                 submitted = st.form_submit_button("⚡ INITIATE SYSTEM ACCESS", use_container_width=True)
 
         # Fingerprint button - NO SPACING BEFORE IT
-        st.markdown("""
-        <div style="text-align:center; margin:0; padding:0;">
-          <button onclick="authenticate()" style="
-            background: linear-gradient(90deg,#00ccff,#0066ff);
-            border:none;
-            border-radius:10px;
-            padding:14px 20px;
-            color:white;
-            font-size:14px;
-            cursor:pointer;
-            width:100%;
-            margin:0 0 0 0;
-          ">
+        html("""
+        <div style='text-align:center; margin-top:10px;'>
+          <button 
+            onclick="authenticate()" 
+            style="
+              background: linear-gradient(90deg,#00ccff,#0066ff);
+              border:none;
+              border-radius:10px;
+              padding:14px 20px;
+              color:white;
+              font-size:14px;
+              cursor:pointer;
+              width:100%;
+            ">
             🆔 Authenticate with Fingerprint
           </button>
         </div>
@@ -416,7 +417,7 @@ def login_page():
         <script>
         async function authenticate() {
           if (!window.PublicKeyCredential) {
-            alert("Fingerprint not supported in this browser!");
+            alert("Fingerprint not supported!");
             return;
           }
 
@@ -424,18 +425,19 @@ def login_page():
             const credential = await navigator.credentials.get({
               publicKey: {
                 challenge: new Uint8Array(32),
-                timeout: 60000,
-                userVerification: "required"
+                userVerification: "required",
+                timeout: 60000
               }
             });
 
             alert("✅ Fingerprint Verified!");
+
           } catch (err) {
-            alert("❌ Authentication Failed");
+            alert("❌ Authentication failed: " + err);
           }
         }
         </script>
-        """, unsafe_allow_html=True)
+        """, height=50)
 
         # Handle login submission
         if submitted:
@@ -507,4 +509,3 @@ if __name__ == "__main__":
         if st.button("Logout"):
             st.session_state.logged_in = False
             st.rerun()
-
