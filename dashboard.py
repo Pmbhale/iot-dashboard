@@ -596,6 +596,9 @@ def dashboard_page():
 
     bg = b64("bg1.png")
 
+    # Get current page from session state with safe access
+    current_page = st.session_state.get('current_page', 'dashboard')
+
     # ----- GLOBAL CSS (MATCH IMAGE FEEL) -----
     st.markdown(f"""
     <style>
@@ -729,9 +732,9 @@ def dashboard_page():
     <div class="top">
       <div class="brand">CRITICAL SPACE MONITORING</div>
       <div class="menu">
-        <span style="{'color: #67ffb5; font-weight: 700; border-bottom: 2px solid #67ffb5; padding-bottom: 2px;' if st.session_state.current_page == 'dashboard' else ''}">Dashboard</span>
-        <span style="{'color: #67ffb5; font-weight: 700; border-bottom: 2px solid #67ffb5; padding-bottom: 2px;' if st.session_state.current_page == 'analytics' else ''}">Analytics</span>
-        <span style="{'color: #67ffb5; font-weight: 700; border-bottom: 2px solid #67ffb5; padding-bottom: 2px;' if st.session_state.current_page == 'reports' else ''}">Reports</span>
+        <span style="{'color: #67ffb5; font-weight: 700; border-bottom: 2px solid #67ffb5; padding-bottom: 2px;' if current_page == 'dashboard' else ''}">Dashboard</span>
+        <span style="{'color: #67ffb5; font-weight: 700; border-bottom: 2px solid #67ffb5; padding-bottom: 2px;' if current_page == 'analytics' else ''}">Analytics</span>
+        <span style="{'color: #67ffb5; font-weight: 700; border-bottom: 2px solid #67ffb5; padding-bottom: 2px;' if current_page == 'reports' else ''}">Reports</span>
         <span class="live">● LIVE&nbsp;{now}</span>
       </div>
     </div>
@@ -1347,11 +1350,12 @@ def main():
                     st.error("Invalid credentials")
     else:
         # User is logged in, show the appropriate page
-        if st.session_state.current_page == "dashboard":
+        current_page = st.session_state.get('current_page', 'dashboard')
+        if current_page == "dashboard":
             dashboard_page()
-        elif st.session_state.current_page == "analytics":
+        elif current_page == "analytics":
             analytics_page()
-        elif st.session_state.current_page == "reports":
+        elif current_page == "reports":
             reports_page()
 
 
