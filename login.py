@@ -2,7 +2,9 @@ import streamlit as st
 from datetime import datetime
 import base64
 import time
+import base64
 from streamlit.components.v1 import html
+
 
 def play_sound(file):
     with open(file, "rb") as f:
@@ -14,10 +16,6 @@ def play_sound(file):
     </audio>
     """, height=0)
 
-def verify_passkey(cred_id):
-    """Simple verification: Check if the credential ID matches the registered one."""
-    registered_cred = st.session_state.get('registered_passkey_cred', None)
-    return registered_cred == cred_id and cred_id is not None
 
 def login_page():
     st.markdown("""
@@ -366,61 +364,9 @@ def login_page():
         </div>
         """, unsafe_allow_html=True)
 
-        # Passkey registration button
-        if st.button("Register Passkey (Fingerprint)", use_container_width=True):
-            html("""
-            <script>
-            async function registerPasskey() {
-              if (!window.PublicKeyCredential) {
-                alert("Passkeys not supported in this browser!");
-                return;
-              }
-              try {
-                const challenge = new Uint8Array(32);  // Random challenge (generate securely in production)
-                const credential = await navigator.credentials.create({
-                  publicKey: {
-                    challenge: challenge,
-                    rp: { name: "CSMS", id: window.location.hostname },
-                    user: {
-                      id: new Uint8Array(16),  // Unique user ID (generate per user)
-                      name: "admin",
-                      displayName: "Admin User"
-                    },
-                    pubKeyCredParams: [{ alg: -7, type: "public-key" }],  // ES256 algorithm
-                    authenticatorSelection: {
-                      authenticatorAttachment: "platform",  // Prefer built-in (fingerprint)
-                      userVerification: "required"  // Require biometric verification
-                    },
-                    timeout: 60000
-                  }
-                });
-                // Store credential ID in sessionStorage (simulate backend storage)
-                const credentialId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
-                sessionStorage.setItem('passkey_credential_id', credentialId);
-                alert("✅ Passkey Registered! You can now sign in with fingerprint.");
-              } catch (err) {
-                alert("❌ Registration Failed: " + err.message);
-              }
-            }
-            registerPasskey();
-            </script>
-            """)
-
         # Login form
         USER = "admin"
         PASS = "CSMS@2024"
-        params = st.query_params or {}
-
-        cred = params.get("auth", None)
-
-        if cred:
-            if verify_passkey(cred):
-                st.session_state.logged_in = True
-                st.session_state.username = "admin"
-                st.query_params.clear()
-                st.rerun()
-            else:
-                st.error("❌ Fingerprint matched but device unauthorized!")
 
         with st.form("login_form", clear_on_submit=False):
             # Create a container for the form
@@ -451,18 +397,19 @@ def login_page():
 
         # Fingerprint button - NO SPACING BEFORE IT
         html("""
-        <div style="text-align:center; margin:0; padding:0;">
-          <button onclick="authenticate()" style="
-            background: linear-gradient(90deg,#00ccff,#0066ff);
-            border:none;
-            border-radius:10px;
-            padding:14px 20px;
-            color:white;
-            font-size:14px;
-            cursor:pointer;
-            width:100%;
-            margin:0 0 0 0;
-          ">
+        <div style='text-align:center; margin-top:10px;'>
+          <button 
+            onclick="authenticate()" 
+            style="
+              background: linear-gradient(90deg,#00ccff,#0066ff);
+              border:none;
+              border-radius:10px;
+              padding:14px 20px;
+              color:white;
+              font-size:14px;
+              cursor:pointer;
+              width:100%;
+            ">
             🆔 Authenticate with Fingerprint
           </button>
         </div>
@@ -470,39 +417,96 @@ def login_page():
         <script>
         async function authenticate() {
           if (!window.PublicKeyCredential) {
-            alert("Fingerprint not supported in this browser!");
+            alert("Fingerprint not supported!");
             return;
           }
-          const storedCredentialId = sessionStorage.getItem('passkey_credential_id');
-          if (!storedCredentialId) {
-            alert("No passkey registered. Please register first.");
-            return;
-          }
+
           try {
-            const challenge = new Uint8Array(32);  // Same challenge as registration
             const credential = await navigator.credentials.get({
               publicKey: {
-                challenge: challenge,
-                allowCredentials: [{
-                  id: Uint8Array.from(atob(storedCredentialId), c => c.charCodeAt(0)),
-                  type: 'public-key'
-                }],
-                timeout: 60000,
-                userVerification: "required"  // Require biometric verification
+                challenge: new Uint8Array(32),
+                userVerification: "required",
+                timeout: 60000
               }
             });
+
             alert("✅ Fingerprint Verified!");
-            // Trigger login by reloading with a query param
-            window.location.href = window.location.href.split('?')[0] + '?fingerprint_auth=1';
+
           } catch (err) {
-            alert("❌ Authentication Failed: " + err.message);
+            alert("❌ Authentication failed: " + err);
           }
         }
         </script>
-        """)
+        """, height=50)
 
         # Handle login submission
         if submitted:
             if username == USER and password == PASS:
+
                 play_sound("success.mp3")  # 🔊 SOUND PLAY HERE
+
+                with st.spinner("🔐 Authenticating..."):
+                    time.sleep(1)
+
+                st.markdown(f"""
+                <div class="success">
+                    <div class="success-text">
+                        <span>✓</span>
+                        <span>ACCESS GRANTED • WELCOME, {username.upper()}</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                st.session_state.logged_in = True
+                st.session_state.username = username
+
+                time.sleep(1.5)
+                st.rerun()
+
+            else:
+                # Failed login
+                st.markdown(f"""
+                <div class="warning">
+                    <div class="warning-text">
+                        <span>⚠️</span>
+                        <span>ACCESS DENIED • INVALID CREDENTIALS</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # Footer - NO SPACING AFTER FINGERPRINT BUTTON
+        st.markdown("""
+        <div class="footer">
+            <div>
+                <span class="status-indicator"></span> SYSTEM STATUS: <span style="color: #00ff88;">ACTIVE & SECURE</span>
+            </div>
+            <br>
+            <div>
+                © 2024 CSMS • ALL ACTIVITIES ARE MONITORED AND LOGGED
+            </div>
+            <div>
+                ⚠️ UNAUTHORIZED ACCESS ATTEMPTS WILL BE REPORTED
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+# Main app logic
+if __name__ == "__main__":
+    # Initialize session state
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+
+    # Display login page or main app
+    if not st.session_state.logged_in:
+        login_page()
+    else:
+        # Main application after login
+        st.title(f"Welcome to CSMS, {st.session_state.username}!")
+        st.success("You have successfully logged into the Critical Space Monitoring System.")
+
+        # Add a logout button
+        if st.button("Logout"):
+            st.session_state.logged_in = False
+            st.rerun()
 
