@@ -74,9 +74,28 @@ if "historical_data" not in st.session_state:
 
 
 def analytics_page():
+
+    # Initialize session state variables if needed
+    if "historical_data" not in st.session_state:
+        # Generate 30 days of fake historical data
+        dates = pd.date_range(end=datetime.now(), periods=30, freq='D')
+        historical = pd.DataFrame({
+            'Date': dates,
+            'Temperature': np.random.uniform(22, 36, 30),
+            'Humidity': np.random.uniform(40, 75, 30),
+            'Pressure': np.random.uniform(980, 1025, 30),
+            'PM2.5': np.random.uniform(10, 80, 30),
+            'CO2': np.random.uniform(400, 1500, 30),
+            'Noise': np.random.uniform(25, 85, 30),
+            'Energy_Consumption': np.random.uniform(50, 200, 30)
+        })
+        st.session_state.historical_data = historical
+    
     # ----- LOGIN GUARD -----
     if not st.session_state.logged_in:
         st.stop()
+    
+    # ... rest of your analytics_page code ...
 
     # Title
     st.markdown("<div class='hero'>📊 Advanced Analytics & Trends</div>", unsafe_allow_html=True)
@@ -356,10 +375,27 @@ def analytics_page():
 
 
 def reports_page():
+    # Initialize session state variables if needed
+    if "historical_data" not in st.session_state:
+        # Generate 30 days of fake historical data
+        dates = pd.date_range(end=datetime.now(), periods=30, freq='D')
+        historical = pd.DataFrame({
+            'Date': dates,
+            'Temperature': np.random.uniform(22, 36, 30),
+            'Humidity': np.random.uniform(40, 75, 30),
+            'Pressure': np.random.uniform(980, 1025, 30),
+            'PM2.5': np.random.uniform(10, 80, 30),
+            'CO2': np.random.uniform(400, 1500, 30),
+            'Noise': np.random.uniform(25, 85, 30),
+            'Energy_Consumption': np.random.uniform(50, 200, 30)
+        })
+        st.session_state.historical_data = historical
+    
     # ----- LOGIN GUARD -----
     if not st.session_state.logged_in:
         st.stop()
-
+    
+    # ... rest of your reports_page code ...
     # Title
     st.markdown("<div class='hero'>📋 Comprehensive Reports</div>", unsafe_allow_html=True)
 
@@ -573,6 +609,43 @@ def reports_page():
 
 
 def dashboard_page():
+    # Initialize ALL session state variables if they don't exist
+    if "hist" not in st.session_state:
+        st.session_state.hist = pd.DataFrame(columns=["t", "Temp", "Hum", "Press", "CO2", "PM25"])
+    
+    # Initialize other session state variables if needed
+    if "sound_allowed" not in st.session_state:
+        st.session_state.sound_allowed = True
+
+    if "current_page" not in st.session_state:
+        st.session_state.current_page = "dashboard"
+
+    if "email_sent" not in st.session_state:
+        st.session_state.email_sent = {"temperature": False, "humidity": False, "pressure": False, "co2": False,
+                                       "pm25": False}
+
+    if "beep_on" not in st.session_state:
+        st.session_state.beep_on = False
+
+    if "alarm" not in st.session_state:
+        st.session_state.alarm = False
+
+    # Initialize historical_data if not present
+    if "historical_data" not in st.session_state:
+        # Generate 30 days of fake historical data
+        dates = pd.date_range(end=datetime.now(), periods=30, freq='D')
+        historical = pd.DataFrame({
+            'Date': dates,
+            'Temperature': np.random.uniform(22, 36, 30),
+            'Humidity': np.random.uniform(40, 75, 30),
+            'Pressure': np.random.uniform(980, 1025, 30),
+            'PM2.5': np.random.uniform(10, 80, 30),
+            'CO2': np.random.uniform(400, 1500, 30),
+            'Noise': np.random.uniform(25, 85, 30),
+            'Energy_Consumption': np.random.uniform(50, 200, 30)
+        })
+        st.session_state.historical_data = historical
+
     # ----- LOGIN GUARD -----
     if not st.session_state.logged_in:
         st.stop()
@@ -765,7 +838,7 @@ def dashboard_page():
     # Add some spacing
     st.markdown("<br><br>", unsafe_allow_html=True)
 
-    # Handle page navigation - FIXED LINE 769
+    # Handle page navigation - FIXED LINE
     if current_page != "dashboard":
         if current_page == "analytics":
             analytics_page()
@@ -894,7 +967,7 @@ def dashboard_page():
         st.markdown("<div class='card'><div class='hdr'>Real-Time Trends (Last 20 readings)</div>",
                     unsafe_allow_html=True)
 
-        # Add all parameters to history
+        # Add all parameters to history - NOW SAFE
         st.session_state.hist.loc[len(st.session_state.hist)] = [
             datetime.now().strftime("%H:%M:%S"),
             s["Temperature"],
@@ -1362,4 +1435,5 @@ def main():
 # Run the app
 if __name__ == "__main__":
     main()
+
 
