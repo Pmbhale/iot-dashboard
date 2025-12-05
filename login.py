@@ -5,6 +5,7 @@ import time
 import base64
 from streamlit.components.v1 import html
 
+
 def play_sound(file):
     with open(file, "rb") as f:
         sound = base64.b64encode(f.read()).decode()
@@ -72,6 +73,7 @@ def login_page():
             0 0 60px rgba(0, 100, 255, 0.15),
             inset 0 1px 0 rgba(255, 255, 255, 0.1);
         z-index: 2;
+        margin-bottom: 30px;  /* Added spacing between login card and logo card */
     }
 
     /* Glowing border effect */
@@ -268,7 +270,7 @@ def login_page():
     /* Footer */
     .footer {
         text-align: center;
-        margin-top: 30px;
+        margin-top: 0px !important;
         padding-top: 20px;
         border-top: 1px solid rgba(255, 255, 255, 0.1);
         color: #8892b0;
@@ -354,10 +356,6 @@ def login_page():
             </div>
             <div class="system-title">CRITICAL SPACE MONITORING SYSTEM</div>
             <div class="system-subtitle">CSMS v2.1.7</div>
-
-              
-            
-            
           </div>
 
           <div class="time-display">
@@ -396,8 +394,10 @@ def login_page():
 
                 # Submit button
                 submitted = st.form_submit_button("⚡ INITIATE SYSTEM ACCESS", use_container_width=True)
-        html("""
-        <div style="text-align:center; margin-top:15px">
+
+        # Fingerprint button - NO SPACING BEFORE IT
+        st.markdown("""
+        <div style="text-align:center; margin:0; padding:0;">
           <button onclick="authenticate()" style="
             background: linear-gradient(90deg,#00ccff,#0066ff);
             border:none;
@@ -406,6 +406,8 @@ def login_page():
             color:white;
             font-size:14px;
             cursor:pointer;
+            width:100%;
+            margin:0 0 0 0;
           ">
             🆔 Authenticate with Fingerprint
           </button>
@@ -433,7 +435,7 @@ def login_page():
           }
         }
         </script>
-        """)
+        """, unsafe_allow_html=True)
 
         # Handle login submission
         if submitted:
@@ -470,7 +472,7 @@ def login_page():
                 </div>
                 """, unsafe_allow_html=True)
 
-        # Footer
+        # Footer - NO SPACING AFTER FINGERPRINT BUTTON
         st.markdown("""
         <div class="footer">
             <div>
