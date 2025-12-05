@@ -577,6 +577,9 @@ def dashboard_page():
     if not st.session_state.logged_in:
         st.stop()
 
+    # Get current page from session state with safe access
+    current_page = st.session_state.get('current_page', 'dashboard')
+    
     # ----- HIDE STREAMLIT CHROME -----
     st.markdown("""
     <style>
@@ -595,9 +598,6 @@ def dashboard_page():
             return "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
 
     bg = b64("bg1.png")
-
-    # Get current page from session state with safe access
-    current_page = st.session_state.get('current_page', 'dashboard')
 
     # ----- GLOBAL CSS (MATCH IMAGE FEEL) -----
     st.markdown(f"""
@@ -765,11 +765,11 @@ def dashboard_page():
     # Add some spacing
     st.markdown("<br><br>", unsafe_allow_html=True)
 
-    # Handle page navigation
-    if st.session_state.current_page != "dashboard":
-        if st.session_state.current_page == "analytics":
+    # Handle page navigation - FIXED LINE 769
+    if current_page != "dashboard":
+        if current_page == "analytics":
             analytics_page()
-        elif st.session_state.current_page == "reports":
+        elif current_page == "reports":
             reports_page()
         return
 
@@ -1362,3 +1362,4 @@ def main():
 # Run the app
 if __name__ == "__main__":
     main()
+
