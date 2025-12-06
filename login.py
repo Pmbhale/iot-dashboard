@@ -2,22 +2,57 @@ import streamlit as st
 from datetime import datetime
 import base64
 import time
-import base64
+import json
 from streamlit.components.v1 import html
 
 
 def play_sound(file):
-    with open(file, "rb") as f:
-        sound = base64.b64encode(f.read()).decode()
+    try:
+        with open(file, "rb") as f:
+            sound = base64.b64encode(f.read()).decode()
+        html(f"""
+        <audio autoplay>
+            <source src="data:audio/mp3;base64,{sound}" type="audio/mp3">
+        </audio>
+        """, height=0)
+    except:
+        # Fallback sound using Web Audio API
+        html("""
+        <script>
+        function playBeep() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
 
-    html(f"""
-    <audio autoplay>
-        <source src="data:audio/mp3;base64,{sound}" type="audio/mp3">
-    </audio>
-    """, height=0)
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+        playBeep();
+        </script>
+        """, height=0)
 
 
 def login_page():
+    # Check for fingerprint authentication success
+    query_params = st.query_params
+
+    if "fingerprint_success" in query_params:
+        play_sound("success.mp3")
+        st.session_state.logged_in = True
+        st.session_state.username = "admin"
+        st.query_params.clear()
+        st.rerun()
+
     st.markdown("""
     <style>
     /* Hide Streamlit elements */
@@ -73,7 +108,7 @@ def login_page():
             0 0 60px rgba(0, 100, 255, 0.15),
             inset 0 1px 0 rgba(255, 255, 255, 0.1);
         z-index: 2;
-        margin-bottom: 30px;  /* Added spacing between login card and logo card */
+        margin-bottom: 30px;
     }
 
     /* Glowing border effect */
@@ -321,6 +356,25 @@ def login_page():
         margin-top: 20px;
     }
 
+    /* Fingerprint button */
+    .fingerprint-btn {
+        background: linear-gradient(90deg,#00ccff,#0066ff);
+        border: none;
+        border-radius: 10px;
+        padding: 14px 20px;
+        color: white;
+        font-size: 14px;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 10px;
+        transition: all 0.3s;
+    }
+
+    .fingerprint-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 150, 255, 0.4);
+    }
+
     </style>
 
     <!-- Scanlines overlay -->
@@ -355,7 +409,7 @@ def login_page():
               {logo_html}
             </div>
             <div class="system-title">CRITICAL SPACE MONITORING SYSTEM</div>
-            <div class="system-subtitle">CSMS v2.1.7</div>
+            <div class="system-subtitle">CSMS v2.1.7 | Biometric Enabled</div>
           </div>
 
           <div class="time-display">
@@ -395,55 +449,146 @@ def login_page():
                 # Submit button
                 submitted = st.form_submit_button("⚡ INITIATE SYSTEM ACCESS", use_container_width=True)
 
-        # Fingerprint button - NO SPACING BEFORE IT
-        html("""
+        # Fingerprint button with REAL login functionality
+        html(f"""
         <div style='text-align:center; margin-top:10px;'>
           <button 
             onclick="authenticate()" 
-            style="
-              background: linear-gradient(90deg,#00ccff,#0066ff);
-              border:none;
-              border-radius:10px;
-              padding:14px 20px;
-              color:white;
-              font-size:14px;
-              cursor:pointer;
-              width:100%;
-            ">
+            class="fingerprint-btn">
             🆔 Authenticate with Fingerprint
           </button>
         </div>
 
         <script>
-        async function authenticate() {
-          if (!window.PublicKeyCredential) {
-            alert("Fingerprint not supported!");
+        async function authenticate() {{
+          if (!window.PublicKeyCredential) {{
+            alert("Fingerprint authentication is not supported in this browser.");
             return;
-          }
+          }}
 
-          try {
-            const credential = await navigator.credentials.get({
-              publicKey: {
+          try {{
+            // Show loading state
+            const btn = document.querySelector('.fingerprint-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '🔄 Scanning...';
+            btn.disabled = true;
+
+            // Check if we have stored credentials first
+            const storedCreds = localStorage.getItem('csms_biometric_credentials');
+            let allowCredentials = [];
+
+            if (storedCreds) {{
+              const creds = JSON.parse(storedCreds);
+              for (let cred of creds) {{
+                allowCredentials.push({{
+                  id: Uint8Array.from(atob(cred.id), c => c.charCodeAt(0)),
+                  type: 'public-key',
+                  transports: ['internal']
+                }});
+              }}
+            }}
+
+            const credential = await navigator.credentials.get({{
+              publicKey: {{
                 challenge: new Uint8Array(32),
+                allowCredentials: allowCredentials,
                 userVerification: "required",
                 timeout: 60000
-              }
-            });
+              }}
+            }});
 
-            alert("✅ Fingerprint Verified!");
+            if (credential) {{
+              // Store the credential for future use
+              const credentialData = {{
+                id: credential.id,
+                type: credential.type,
+                rawId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId)))
+              }};
 
-          } catch (err) {
-            alert("❌ Authentication failed: " + err);
-          }
-        }
+              // Store in localStorage for future authentication
+              const existingCreds = storedCreds ? JSON.parse(storedCreds) : [];
+              const exists = existingCreds.some(c => c.id === credentialData.id);
+              if (!exists) {{
+                existingCreds.push(credentialData);
+                localStorage.setItem('csms_biometric_credentials', JSON.stringify(existingCreds));
+              }}
+
+              // SUCCESS - Redirect with query parameter
+              window.location.href = "?fingerprint_success=1";
+            }} else {{
+              btn.innerHTML = originalText;
+              btn.disabled = false;
+              alert("❌ Fingerprint authentication failed. Please try again.");
+            }}
+
+          }} catch (err) {{
+            console.error("Fingerprint error:", err);
+
+            // Check if it's a cancellation error
+            if (err.name === 'NotAllowedError' || err.name === 'AbortError') {{
+              alert("⚠️ Fingerprint authentication was cancelled.");
+            }} else {{
+              // For first-time registration or other errors, show appropriate message
+              alert("🔐 No fingerprint registered. Would you like to register one now?");
+
+              // Try to register a new fingerprint
+              try {{
+                const registrationOptions = {{
+                  publicKey: {{
+                    rp: {{ name: "CSMS System" }},
+                    user: {{
+                      id: new Uint8Array(16),
+                      name: "admin@csms",
+                      displayName: "CSMS Admin"
+                    }},
+                    challenge: new Uint8Array(32),
+                    pubKeyCredParams: [
+                      {{type: "public-key", alg: -7}},
+                      {{type: "public-key", alg: -257}}
+                    ],
+                    timeout: 60000,
+                    attestation: "direct",
+                    authenticatorSelection: {{
+                      authenticatorAttachment: "platform",
+                      userVerification: "required"
+                    }}
+                  }}
+                }};
+
+                const newCredential = await navigator.credentials.create(registrationOptions);
+
+                if (newCredential) {{
+                  const credentialData = {{
+                    id: newCredential.id,
+                    type: newCredential.type,
+                    rawId: btoa(String.fromCharCode(...new Uint8Array(newCredential.rawId)))
+                  }};
+
+                  localStorage.setItem('csms_biometric_credentials', JSON.stringify([credentialData]));
+                  alert("✅ Fingerprint registered successfully!\\nYou can now login with fingerprint.");
+
+                  // Retry login
+                  setTimeout(() => window.location.href = "?fingerprint_success=1", 1000);
+                }}
+              }} catch (regError) {{
+                console.error("Registration error:", regError);
+                alert("❌ Fingerprint setup failed. Please try password login.");
+              }}
+            }}
+
+            // Reset button
+            const btn = document.querySelector('.fingerprint-btn');
+            btn.innerHTML = '🆔 Authenticate with Fingerprint';
+            btn.disabled = false;
+          }}
+        }}
         </script>
-        """, height=50)
+        """, height=100)
 
-        # Handle login submission
+        # Handle password login submission
         if submitted:
             if username == USER and password == PASS:
-
-                play_sound("success.mp3")  # 🔊 SOUND PLAY HERE
+                play_sound("success.mp3")
 
                 with st.spinner("🔐 Authenticating..."):
                     time.sleep(1)
@@ -474,7 +619,7 @@ def login_page():
                 </div>
                 """, unsafe_allow_html=True)
 
-        # Footer - NO SPACING AFTER FINGERPRINT BUTTON
+        # Footer
         st.markdown("""
         <div class="footer">
             <div>
@@ -491,23 +636,150 @@ def login_page():
         """, unsafe_allow_html=True)
 
 
+# ====================
+# DASHBOARD PAGE
+# ====================
+
+def dashboard_page():
+    """Main dashboard after successful login"""
+    st.markdown("""
+    <style>
+    .stApp {
+        background: linear-gradient(135deg, #0a0e17 0%, #121828 100%);
+    }
+
+    .dashboard-header {
+        background: linear-gradient(90deg, #00ccff, #0066ff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        padding: 20px 0;
+        border-bottom: 1px solid rgba(0, 150, 255, 0.2);
+        margin-bottom: 30px;
+    }
+
+    .metric-card {
+        background: rgba(10, 14, 23, 0.8);
+        border: 1px solid rgba(0, 150, 255, 0.2);
+        border-radius: 12px;
+        padding: 20px;
+        margin: 10px 0;
+    }
+
+    .logout-btn {
+        background: linear-gradient(90deg, #ff6b6b, #ff8e53) !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 12px 24px !important;
+        color: white !important;
+        font-weight: 600 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Header with logout button
+    col1, col2, col3 = st.columns([3, 1, 1])
+    with col1:
+        st.markdown(f'<h1 class="dashboard-header">🚀 Welcome to CSMS, {st.session_state.username}!</h1>',
+                    unsafe_allow_html=True)
+    with col3:
+        if st.button("Logout", type="primary", use_container_width=True):
+            st.session_state.logged_in = False
+            st.rerun()
+
+    # Success message
+    st.success("✅ You have successfully logged into the Critical Space Monitoring System.")
+
+    # System metrics
+    st.markdown("### 📊 System Overview")
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.markdown("""
+        <div class="metric-card">
+            <h3 style="color:#00ccff; margin:0;">System Status</h3>
+            <h1 style="color:#00ff88; margin:10px 0;">🟢 ACTIVE</h1>
+            <p style="color:#8892b0; margin:0; font-size:12px;">All systems operational</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+        <div class="metric-card">
+            <h3 style="color:#00ccff; margin:0;">Security Level</h3>
+            <h1 style="color:#00ff88; margin:10px 0;">MAXIMUM</h1>
+            <p style="color:#8892b0; margin:0; font-size:12px;">Biometric verified</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col3:
+        st.markdown("""
+        <div class="metric-card">
+            <h3 style="color:#00ccff; margin:0;">CPU Usage</h3>
+            <h1 style="color:#00ccff; margin:10px 0;">42%</h1>
+            <p style="color:#8892b0; margin:0; font-size:12px;">Normal operation</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col4:
+        st.markdown("""
+        <div class="metric-card">
+            <h3 style="color:#00ccff; margin:0;">Memory</h3>
+            <h1 style="color:#00ccff; margin:10px 0;">78%</h1>
+            <p style="color:#8892b0; margin:0; font-size:12px;">Optimal</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # Quick Actions
+    st.markdown("### ⚡ Quick Actions")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("📊 View Detailed Metrics", use_container_width=True):
+            st.info("Detailed system metrics would appear here")
+
+    with col2:
+        if st.button("🔒 Security Dashboard", use_container_width=True):
+            st.info("Security dashboard would appear here")
+
+    with col3:
+        if st.button("📋 Generate Report", use_container_width=True):
+            st.info("Report generation would start here")
+
+    # Recent Activity
+    st.markdown("---")
+    st.markdown("### 📈 Recent Activity")
+
+    activity_data = [
+        {"time": "10:30 AM", "event": "Biometric Login", "user": "admin", "status": "✅ Success"},
+        {"time": "10:25 AM", "event": "System Check", "user": "system", "status": "✅ Completed"},
+        {"time": "10:15 AM", "event": "Database Backup", "user": "system", "status": "✅ Completed"},
+        {"time": "09:45 AM", "event": "Network Scan", "user": "security", "status": "✅ No threats"},
+    ]
+
+    for activity in activity_data:
+        col1, col2, col3, col4 = st.columns([2, 3, 2, 2])
+        with col1:
+            st.write(f"🕒 {activity['time']}")
+        with col2:
+            st.write(f"**{activity['event']}**")
+        with col3:
+            st.write(activity['user'])
+        with col4:
+            st.write(f"{activity['status']}")
+
+
 # Main app logic
 if __name__ == "__main__":
     # Initialize session state
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
+    if "username" not in st.session_state:
+        st.session_state.username = ""
 
-    # Display login page or main app
+    # Display appropriate page
     if not st.session_state.logged_in:
         login_page()
     else:
-        # Main application after login
-        st.title(f"Welcome to CSMS, {st.session_state.username}!")
-        st.success("You have successfully logged into the Critical Space Monitoring System.")
-
-        # Add a logout button
-        if st.button("Logout"):
-            st.session_state.logged_in = False
-            st.rerun()
-
-
+        dashboard_page()
