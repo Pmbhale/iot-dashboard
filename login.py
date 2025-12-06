@@ -18,11 +18,6 @@ def play_sound(file):
 
 
 def login_page():
-    if st.session_state.get("bio_login"):
-        st.session_state.logged_in = True
-        st.session_state.username = "admin"
-        st.rerun()
-
     st.markdown("""
     <style>
     /* Hide Streamlit elements */
@@ -415,30 +410,34 @@ def login_page():
               cursor:pointer;
               width:100%;
             ">
-            🔐 Login with Face ID / Fingerprint
+            🆔 Authenticate with Fingerprint
           </button>
         </div>
 
         <script>
         async function authenticate() {
+          if (!window.PublicKeyCredential) {
+            alert("Fingerprint not supported!");
+            return;
+          }
+
           try {
-            // Run actual biometric prompt
-            await navigator.credentials.get({
+            const credential = await navigator.credentials.get({
               publicKey: {
                 challenge: new Uint8Array(32),
-                userVerification: "required"
+                userVerification: "required",
+                timeout: 60000
               }
             });
 
-            // If biometric success → tell Streamlit to login
-            window.parent.postMessage({login_success: true}, "*");
+            alert("✅ Fingerprint Verified!");
 
           } catch (err) {
             alert("❌ Authentication failed: " + err);
           }
         }
         </script>
-        """, height=120)
+        """, height=50)
 
         # Handle login submission
         if submitted:
@@ -474,20 +473,6 @@ def login_page():
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-        html("""
-        <script>
-        window.addEventListener("message", (event) => {
-            if(event.data.login_success){
-                // Tell Streamlit to store session state variable
-                const msg = {
-                    type: "streamlit:sessionState",
-                    updates: { bio_login: true }
-                };
-                window.parent.postMessage(msg, "*");
-            }
-        });
-        </script>
-        """, height=0)
 
         # Footer - NO SPACING AFTER FINGERPRINT BUTTON
         st.markdown("""
