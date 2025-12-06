@@ -18,6 +18,11 @@ def play_sound(file):
 
 
 def login_page():
+    if st.session_state.get("bio_login"):
+        st.session_state.logged_in = True
+        st.session_state.username = "admin"
+        st.rerun()
+
     st.markdown("""
     <style>
     /* Hide Streamlit elements */
@@ -410,34 +415,30 @@ def login_page():
               cursor:pointer;
               width:100%;
             ">
-            🆔 Authenticate with Fingerprint
+            🔐 Login with Face ID / Fingerprint
           </button>
         </div>
 
         <script>
         async function authenticate() {
-          if (!window.PublicKeyCredential) {
-            alert("Fingerprint not supported!");
-            return;
-          }
-
           try {
-            const credential = await navigator.credentials.get({
+            // Run actual biometric prompt
+            await navigator.credentials.get({
               publicKey: {
                 challenge: new Uint8Array(32),
-                userVerification: "required",
-                timeout: 60000
+                userVerification: "required"
               }
             });
 
-            alert("✅ Fingerprint Verified!");
+            // If biometric success → tell Streamlit to login
+            window.parent.postMessage({login_success: true}, "*");
 
           } catch (err) {
             alert("❌ Authentication failed: " + err);
           }
         }
         </script>
-        """, height=50)
+        """, height=120)
 
         # Handle login submission
         if submitted:
@@ -473,6 +474,20 @@ def login_page():
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+        html("""
+        <script>
+        window.addEventListener("message", (event) => {
+            if(event.data.login_success){
+                // Tell Streamlit to store session state variable
+                const msg = {
+                    type: "streamlit:sessionState",
+                    updates: { bio_login: true }
+                };
+                window.parent.postMessage(msg, "*");
+            }
+        });
+        </script>
+        """, height=0)
 
         # Footer - NO SPACING AFTER FINGERPRINT BUTTON
         st.markdown("""
@@ -509,4 +524,5 @@ if __name__ == "__main__":
         if st.button("Logout"):
             st.session_state.logged_in = False
             st.rerun()
+
 
